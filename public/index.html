@@ -1,0 +1,274 @@
+<html>
+<head>
+  <title></title>
+  <style>
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+#tweet blockquote{
+  display:none;
+}
+#tweet {
+  /*width:300px;*/
+  display: inline-block;
+  vertical-align: top;
+}
+#vis {
+  width:600px;
+  display: inline-block;
+  vertical-align: top;
+}
+</style>
+</head>
+<body>
+
+
+  <div id="tweet"></div>
+  <div id="vis"></div>
+
+  <!--<script src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/faye.js"></script-->
+  <script type="text/javascript" src="/d3.js"></script>
+  <script>
+ 
+
+
+// var messages = [["400907899133636608",{"user":"248066671","mentions":["258616517","248066671"]}],["400907901344038912",{"user":"1076106912","mentions":["462072336"]}],["400907902786891776",{"user":"535992355","mentions":["1310643032"]}],["400907912379654144",{"user":"1905532224","mentions":["156000200"]}],["400907935632482304",{"user":"259627964","mentions":["459074696"]}],["400907936395837442",{"user":"1459173139","mentions":["87880240"]}],["400907960718606336",{"user":"2163125503","mentions":[]}],["400907961281024000",{"user":"196744956","mentions":[]}],["400907968876933120",{"user":"777829140","mentions":["878715678"]}],["400907972609454080",{"user":"459913339","mentions":["821119939"]}],["400907984680673280",{"user":"337447537","mentions":[]}],["400908002221256704",{"user":"1076106912","mentions":["462072336"]}],["400908008885977088",{"user":"459074696","mentions":["587804836"]}],["400908029245538304",{"user":"144796786","mentions":[]}],["400908033200758784",{"user":"719965001","mentions":["1659681800"]}],["400908074245844992",{"user":"1459173139","mentions":["87880240"]}],["400908086635814912",{"user":"1427323219","mentions":["492118853"]}]];
+
+
+var graph = {
+  links:[],
+  nodes:[]
+}
+
+function findOrCreate(user_id){
+  var last;
+  graph.nodes.forEach(function(n, i){
+    if(n.user == user_id)
+      last = i;
+  });
+  if(last){
+    return last;
+  } else {
+    return graph.nodes.push({id:null, user: user_id}) - 1;
+  }
+
+}
+
+function process(d){
+
+  d.mentions.concat(d.source).forEach(function(u){
+    // connect to priorNode
+
+    var last;
+    graph.nodes.forEach(function(n, i){
+      if((n.user == u)){
+        last = i;
+      }
+    })
+
+    var i = graph.nodes.push({id:d._id, user: u}) - 1;
+
+    if(last){
+      graph.links.push({
+        source:last,
+        target:i,
+        value:1
+      })
+    }
+  });
+
+  var priorNode;
+  graph.nodes.forEach(function(n, i){
+    // console.log(n.user, d.source)
+    if((n.user == d.source)){
+      priorNode = i;
+      // console.log("match!!! ", n, d)
+    }
+  })
+
+
+  d.mentions.forEach(function(u){
+    var j;
+    graph.nodes.forEach(function(n, i){
+      // console.log(n.user, d.source)
+      if((n.user == u)){
+        j = i;
+        // console.log("match!!! ", n, d)
+      }
+    })
+
+    // console.log(">>>",{source:priorNode, target:j, value:2});
+    graph.links.push({source:priorNode, target:j, value:2})
+  });
+
+}
+
+
+
+
+
+var width = 960,
+    height = 500;
+
+var color = d3.scale.category20();
+var colorHash = function(str){
+  var h = 0;
+  for (var i = 0; i < str.length; i++) {
+    h += str.charCodeAt(i)
+  };
+  return color(h%20);
+}
+
+var force = d3.layout.force()
+    .charge(-20)
+    .linkDistance(2)
+    .size([width, height]);
+
+var svg = d3.select("#vis").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+
+// d3.json("miserables.json", function(error, graph) {
+  // force
+  //     .nodes(graph.nodes)
+  //     .links(graph.links)
+  //     .start();
+
+  var link
+   // = svg.selectAll(".link")
+   //    .data(graph.links)
+   //  .enter().append("line")
+   //    .attr("class", "link")
+   //    .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node;
+   // = svg.selectAll(".node")
+   //    .data(graph.nodes)
+   //  .enter().append("circle")
+   //    .attr("class", "node")
+   //    .attr("r", 5)
+   //    .style("fill", function(d) { return color(d.group); })
+   //    .call(force.drag);
+
+  // node.append("title")
+  //     .text(function(d) { return d.name; });
+
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+  });
+// });
+
+function redraw(){
+  force
+    .nodes(graph.nodes)
+    .links(graph.links)
+    .start();
+
+  node = svg.selectAll(".node")
+      .data(graph.nodes);
+
+  node
+    .enter().append("circle")
+      .attr("class", "node")
+      .attr("r", 5)
+      .style("fill", function(d) {return colorHash(d.user); })
+      .call(force.drag)
+      // .on('mouseover', function(d){
+      //   console.log(d.source)
+      //   node
+      //     .transition()
+      //     .style("fill", function(dd) { 
+      //       if(d.source == dd.source) return 'black'
+      //       return colorHash(dd.source);
+      //     })
+      // })
+      .on('click', function(d){
+        console.log(d)
+        // loadTweet(d.source.id)
+
+
+      })
+  
+    // node.exit().remove();
+
+  link = svg.selectAll(".link")
+      .data(graph.links);
+  link
+    .enter().append("line")
+      .attr("class", "link")
+      .style("stroke-width", 3)
+      .style("stroke", function(d) { return d.value == 5 ? '#ddd' : '#555'; })
+      
+
+
+}
+
+function loadTweet(id){
+ (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+  g.src="https://api.twitter.com/1/statuses/oembed.json?id=" + id + "&omit_script=true&callback=renderTweet";
+  s.parentNode.insertBefore(g,s)}(document,'script'));
+}
+
+
+function renderTweet(data){
+  tweet.innerHTML = data.html;
+  document.querySelector('.twitter-tweet').setAttribute('width',200)
+  twttr.widgets.load()
+}
+
+// messages.forEach(process);
+
+
+
+d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?limit=100&skip=0', function(e, data){
+  //mapping from couchdb
+  data = data.rows.map(function(row){return row.value})
+
+  // console.log(data);
+  d = data;
+
+  data.forEach(function(row, i){
+    // console.log(row)
+
+    process(row);
+    redraw();
+  })
+
+})
+
+// for (var i = 0; i < messages.length; i++) {
+//   setTimeout(function(){
+//     process(messages[this]);
+//     redraw();
+//   }.bind(i), 100*i)
+// };
+
+ // var client = new Faye.Client('/faye');
+
+ //  // var messages = [];
+
+ //  client.subscribe('/tweet', function(message) {
+ //    console.log('Got a message: ', message);
+ //    // messages.push(message)
+ //    process(message);
+ //    redraw()
+ //  });
+
+  </script>
+
+
+</body>
+</html>

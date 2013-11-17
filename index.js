@@ -17,6 +17,16 @@ var followCount = {};
 
 
 stream.on('tweet', function(tweet){
+  if(tweet.retweeted_status)
+    return;
+    // console.log("____IGNORE THIS");
+
+  // console.log(tweet)
+
+
+  // return;
+
+  // if(tweet.retweeted) return;
 
   var mentions = tweet.entities.user_mentions.map(function(m){
     return m.id_str

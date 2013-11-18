@@ -14,7 +14,8 @@ var follows, followCount;
 
 function reset(){
   // bieber test
-  follows = {'27260086':true};
+  follows = {};
+  follows[config.root_id] = true;
 
   // ignore a user when they have added more than 20 users
   followCount = {};
@@ -61,10 +62,14 @@ stream.on('tweet', function(tweet){
   mentions.concat(tweet.user.id_str)
   .forEach(function(user){
     followCount[user] = (followCount[user] || 0)+1;
-    if(followCount[user] > 50){
+    if(followCount[user] > 20){ 
       skip = true;
     }
   })
+
+  // always allow adds from benjaminbenben
+  // so that people can get on the vis
+  if(user == '14321903') skip = false;
 
   if(!skip){
     // update the follows

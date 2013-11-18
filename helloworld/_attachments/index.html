@@ -1,12 +1,392 @@
-<!DOCTYPE html>
 <html>
-  <head>
-    <title>Example CouchApp</title>
-    <link rel="stylesheet" href="style/main.css" type="text/css">
-  </head>
-  <body>
-    <h1>Example CouchApp</h1>
-  </body>
-  <script src="script/app.js"></script>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF8">
+  <title></title>
+  <style>
+.node {
+  /*stroke: #fff;*/
+  /*stroke-width: 1.5px;*/
+}
+.link {
+  stroke: #888;
+  stroke-opacity: .3;
+}
+#tweet blockquote{
+  display:none;
+}
+#tweet {
+  /*width:300px;*/
+  display: inline-block;
+  vertical-align: top;
+}
+#vis {
+  width:600px;
+  display: inline-block;
+  vertical-align: top;
+}
+</style>
+</head>
+<body>
 
+
+  <div id="tweet"></div>
+  <div id="vis"></div>
+
+  <script src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+  <script type="text/javascript" src="d3.js"></script>
+  <script>
+
+var graph = {
+  links:[],
+  nodes:[]
+}
+var follows = [];
+
+function findOrCreate(user_id, doc_id){
+  var last;
+  graph.nodes.forEach(function(n, i){
+    if(n.user == user_id)
+      last = i;
+  });
+  if(last){
+    return last;
+  } else {
+    return graph.nodes.push({id:doc_id || null, user: user_id}) - 1;
+  }
+
+}
+
+function process(d){
+
+
+
+  d.mentions.concat(d.source).forEach(function(u){
+    // connect to priorNode
+
+    var last;
+    graph.nodes.forEach(function(n, i){
+      if((n.user == u)){
+        last = i;
+      }
+    })
+
+    if(u == d.source){
+      var i = graph.nodes.push({id:d._id, user: u}) - 1;
+    } else {
+      var i = findOrCreate(u, d._id)
+    }
+
+    
+
+    if(last){
+      graph.links.push({
+        source:last,
+        target:i,
+        value:1
+      })
+    }
+  });
+
+  var priorNode;
+  graph.nodes.forEach(function(n, i){
+    // console.log(n.user, d.source)
+    if((n.user == d.source)){
+      priorNode = i;
+      // console.log("match!!! ", n, d)
+    }
+  })
+
+
+  d.mentions.forEach(function(u){
+    var j;
+    graph.nodes.forEach(function(n, i){
+      if((n.user == u)){
+        j = i;
+      }
+    })
+    graph.links.push({source:priorNode, target:j, value:2})
+  });
+
+}
+
+
+
+
+
+var width = 960,
+    height = 500;
+
+var color = d3.scale.category20();
+var colorHash = function(str){
+  var h = 0;
+  for (var i = 0; i < str.length; i++) {
+    h += str.charCodeAt(i)
+  };
+  return color(h%20);
+}
+
+var force = d3.layout.force()
+    .charge(-30)
+    .linkDistance(15)
+    .size([width, height])
+
+var svg = d3.select("#vis").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+
+var link_group = svg.append('g');
+var node_group = svg.append('g');
+
+// d3.json("miserables.json", function(error, graph) {
+  // force
+  //     .nodes(graph.nodes)
+  //     .links(graph.links)
+  //     .start();
+
+  var link
+   // = svg.selectAll(".link")
+   //    .data(graph.links)
+   //  .enter().append("line")
+   //    .attr("class", "link")
+   //    .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node;
+   // = svg.selectAll(".node")
+   //    .data(graph.nodes)
+   //  .enter().append("circle")
+   //    .attr("class", "node")
+   //    .attr("r", 5)
+   //    .style("fill", function(d) { return color(d.group); })
+   //    .call(force.drag);
+
+  // node.append("title")
+  //     .text(function(d) { return d.name; });
+
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+  });
+// });
+
+function prune(size){
+  var to = graph.nodes.length - size;
+  for(var i =0; i < to; i++){
+    var n = graph.nodes.shift();
+
+    for (var j = graph.links.length - 1; j >= 0; j--) {
+      var link = graph.links[j];
+      if(link.source === n || link.target === n){
+        graph.links.splice(j,1);
+      }
+    };
+  }
+
+  return to > 0
+}
+
+function redraw(){
+
+  node = node_group.selectAll(".node")
+      .data(graph.nodes);
+
+  node
+    .enter().append("circle")
+      .attr("class", "node")
+      // .attr("r", 5)
+      // .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2})
+      .style("fill", function(d) { return colorHash(d.user); })
+      .call(force.drag)
+      // .on('mouseover', function(d){
+      //   console.log(d.source)
+      //   node
+      //     .transition()
+      //     .style("fill", function(dd) { 
+      //       if(d.source == dd.source) return 'black'
+      //       return colorHash(dd.source);
+      //     })
+      // })
+      .on('click', function(d){
+        console.log(d)
+        loadTweet(d.id)
+      })
+      .on('mouseover', function(d){
+        console.log(d)
+        node
+          .style("stroke", function(d2) {return  d.id == d2.id ? '#000' : 'none' })
+      })
+      .on('mouseout', function(d){
+        console.log(d)
+        node.transition()
+          .style("stroke", 'none')
+      })
+  
+    node.exit().remove();
+
+  // might have dynamically changed 
+  node
+    .style("fill", function(d) {return colorHash(d.user); })
+    .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2})
+
+  link = link_group.selectAll(".link")
+      .data(graph.links);
+  link
+    .enter().append("line")
+      .attr("class", "link")
+      // .style("stroke-width", 2)
+      // .style("stroke", function(d) { return d.value == 5 ? '#ddd' : '#555'; })
+      
+
+  link.exit().remove();
+
+
+  // graph.links = graph.links.filter(function(link){
+  //   return link.source && link.target;
+  // })
+
+  force
+    .nodes(graph.nodes)
+    .links(graph.links)
+    .start();
+
+}
+
+function loadTweet(id){
+ (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+  g.src="https://api.twitter.com/1/statuses/oembed.json?id=" + id + "&omit_script=true&callback=renderTweet";
+  s.parentNode.insertBefore(g,s)}(document,'script'));
+}
+
+
+function renderTweet(data){
+  tweet.innerHTML = data.html;
+  document.querySelector('.twitter-tweet').setAttribute('width',200)
+  twttr.widgets.load()
+}
+
+// messages.forEach(process);
+
+function processDoc(doc){
+  if(doc.follows){
+    follows = doc.follows;
+
+    // console.log(doc)
+    
+    // graph.nodes.forEach(function(node){
+    //   node.following = doc.follows.indexOf(node.user) > -1;
+    //   console.log(node.following);
+    // })
+
+    if(node){   
+      node
+        .transition()
+        .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2}) 
+    }
+
+  } else {
+    process(doc);
+    redraw();
+    // prune after force layout has initialised the links properly
+    prune(150); 
+  }
+}
+
+//1134
+// 1817
+
+var skip = 1817 + 2000
+// d3.json('http://127.0.0.1:5984/tweets/_design/tweets/_view/index?descending=true&limit=100', function(e, data){
+
+d3.json('http://127.0.0.1:5984/tweets/_all_docs?descending=true&include_docs=true&limit=5', function(e, data){
+  //mapping from couchdb
+  data = data.rows.map(function(row){return row.doc})
+
+  // console.log(data);
+  d = data;
+
+  data.forEach(function(row, i){
+    // console.log(row)
+
+    setTimeout(function(){
+      processDoc(row);
+    },10*i)
+
+  });
+
+
+  // start listening for changes
+
+  console.log(data);
+  console.log('last-event-id='+ data[0]._id);
+// 
+
+
+
+
+  if (window.EventSource) {
+
+    // var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&last-event-id=" + data[4]._id;
+
+    
+    var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&since=now&include_docs=true&heartbeat=10000";
+
+    var source = new EventSource(url);
+    source.onerror = function(e) {
+      alert('EventSource failed.', e);
+    };
+
+    // var results = [];
+    // var sourceListener = function(e) {
+    //   var data = JSON.parse(e.data);
+    //   results.push(data);
+    // };
+
+    // start listening for events
+    source.addEventListener('message', function(m){
+      // console.log("message", m)
+      console.log(m.data)
+
+      var data = JSON.parse(m.data);
+      console.log(data)
+
+      // if(!m.data.doc) return;
+      processDoc(data.doc);
+    }, false);
+
+    // stop listening for events
+    // source.removeEventListener('message', sourceListener, false);
+
+  }
+
+
+})
+
+// for (var i = 0; i < messages.length; i++) {
+//   setTimeout(function(){
+//     process(messages[this]);
+//     redraw();
+//   }.bind(i), 100*i)
+// };
+
+ // var client = new Faye.Client('/faye');
+
+ //  // var messages = [];
+
+ //  client.subscribe('/tweet', function(message) {
+ //    console.log('Got a message: ', message);
+ //    // messages.push(message)
+ //    process(message);
+ //    redraw()
+ //  });
+
+
+  </script>
+
+
+</body>
 </html>

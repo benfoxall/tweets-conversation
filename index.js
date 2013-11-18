@@ -28,11 +28,15 @@ var last_id_str;
 var resetting;
 
 stream.on('tweet', function(tweet){
-  if(resetting) return;
 
+  if(resetting) return;
+  
   // don't count retweets, it makes things mental
   if(tweet.retweeted_status)
     return;
+
+  try{
+
 
   last_id_str = tweet.id_str;
 
@@ -67,16 +71,25 @@ stream.on('tweet', function(tweet){
     }
   })
 
-  // always allow adds from benjaminbenben
-  // so that people can get on the vis
-  if(user == '14321903') skip = false;
+  mentions.concat(tweet.user.id_str)
+    .forEach(function(user){
+      // always allow adds from benjaminbenben
+      // so that people can get on the vis
+      if(user === '14321903') skip = false;
+    })
 
   if(!skip){
     // update the follows
     mentions.concat(tweet.user.id_str)
     .forEach(function(user){
+      if(!follows[user]) console.log("following - ", user)
+      
       follows[user] = true;
     })
+  }
+
+  } catch (e){
+    console.log("ERROR-", e)
   }
 
 });
@@ -127,7 +140,7 @@ setInterval(function(){
     priorLength = Object.keys(follows).length;
     connect();
   } else {
-    console.log('---> no change in follows')
+    console.log('---> no change in follows - ', Object.keys(follows).length)
   }
 }, 30*1000)
 

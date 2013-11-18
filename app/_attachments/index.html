@@ -302,7 +302,7 @@ function processDoc(doc){
 var skip = 1817 + 2000
 // d3.json('http://127.0.0.1:5984/tweets/_design/tweets/_view/index?descending=true&limit=100', function(e, data){
 
-d3.json('http://127.0.0.1:5984/tweets/_all_docs?descending=true&include_docs=true&limit=5', function(e, data){
+d3.json('../../_all_docs?descending=true&include_docs=true&limit=5', function(e, data){
   //mapping from couchdb
   data = data.rows.map(function(row){return row.doc})
 
@@ -333,7 +333,7 @@ d3.json('http://127.0.0.1:5984/tweets/_all_docs?descending=true&include_docs=tru
     // var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&last-event-id=" + data[4]._id;
 
     
-    var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&since=now&include_docs=true&heartbeat=10000";
+    var url = "../../_changes?feed=eventsource&since=now&include_docs=true&heartbeat=10000";
 
     var source = new EventSource(url);
     source.onerror = function(e) {

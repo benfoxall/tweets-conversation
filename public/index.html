@@ -40,6 +40,7 @@ var graph = {
   links:[],
   nodes:[]
 }
+var follows = [];
 
 function findOrCreate(user_id, doc_id){
   var last;
@@ -197,7 +198,8 @@ function redraw(){
   node
     .enter().append("circle")
       .attr("class", "node")
-      .attr("r", 5)
+      // .attr("r", 5)
+      // .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2})
       .style("fill", function(d) { return colorHash(d.user); })
       .call(force.drag)
       // .on('mouseover', function(d){
@@ -227,7 +229,9 @@ function redraw(){
     node.exit().remove();
 
   // might have dynamically changed 
-  node.style("fill", function(d) {return colorHash(d.user); })
+  node
+    .style("fill", function(d) {return colorHash(d.user); })
+    .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2})
 
   link = link_group.selectAll(".link")
       .data(graph.links);
@@ -267,13 +271,36 @@ function renderTweet(data){
 
 // messages.forEach(process);
 
+function processDoc(doc){
+  if(doc.follows){
+    follows = doc.follows;
 
+    // console.log(doc)
+    
+    // graph.nodes.forEach(function(node){
+    //   node.following = doc.follows.indexOf(node.user) > -1;
+    //   console.log(node.following);
+    // })
+
+    if(node){   
+      node
+        .transition()
+        .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2}) 
+    }
+
+  } else {
+    process(doc);
+    redraw();
+    // prune after force layout has initialised the links properly
+    prune(150); 
+  }
+}
 
 //1134
 // 1817
 
 var skip = 1817 + 2000
-d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?descending=true&limit=50', function(e, data){
+d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?descending=true&limit=100', function(e, data){
   //mapping from couchdb
   data = data.rows.map(function(row){return row.value})
 
@@ -284,10 +311,7 @@ d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?descending=tru
     // console.log(row)
 
     setTimeout(function(){
-      process(row);
-      redraw();
-      // prune after force layout has initialised the links properly
-      prune(150);
+      processDoc(row);
     },10*i)
 
   });
@@ -329,11 +353,7 @@ d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?descending=tru
       console.log(data)
 
       // if(!m.data.doc) return;
-
-      process(data.doc);
-      redraw();
-      // prune after force layout has initialised the links properly
-      prune(150);
+      processDoc(data.doc);
     }, false);
 
     // stop listening for events

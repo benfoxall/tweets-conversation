@@ -8,7 +8,7 @@ var tweets = require('tweets'),
 
 var stream = tweets(config.tweets);
 
-var db = nano('http://localhost:5984/tweets2');
+var db = nano('http://localhost:5984/tweets');
 
 var follows, followCount;
 

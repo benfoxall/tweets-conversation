@@ -1,19 +1,4 @@
-<!--
-
-requires design doc
-
-{
- "_id": "_design/tweets",
- "language": "javascript",
- "views": {
-   "index": {
-     "map": "function(doc) {\n  emit(doc._id,doc);\n}"
-   }
- }
-}
-
-
---><html>
+<html>
 <head>
   <meta http-equiv="content-type" content="text/html; charset=UTF8">
   <title></title>
@@ -315,9 +300,11 @@ function processDoc(doc){
 // 1817
 
 var skip = 1817 + 2000
-d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?descending=true&limit=100', function(e, data){
+// d3.json('http://127.0.0.1:5984/tweets/_design/tweets/_view/index?descending=true&limit=100', function(e, data){
+
+d3.json('http://127.0.0.1:5984/tweets/_all_docs?descending=true&include_docs=true&limit=5', function(e, data){
   //mapping from couchdb
-  data = data.rows.map(function(row){return row.value})
+  data = data.rows.map(function(row){return row.doc})
 
   // console.log(data);
   d = data;
@@ -343,10 +330,10 @@ d3.json('http://127.0.0.1:5984/tweets2/_design/tweets/_view/index?descending=tru
 
   if (window.EventSource) {
 
-    // var url = "http://127.0.0.1:5984/tweets2/_changes?feed=eventsource&last-event-id=" + data[4]._id;
+    // var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&last-event-id=" + data[4]._id;
 
     
-    var url = "http://127.0.0.1:5984/tweets2/_changes?feed=eventsource&since=now&include_docs=true&heartbeat=10000";
+    var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&since=now&include_docs=true&heartbeat=10000";
 
     var source = new EventSource(url);
     source.onerror = function(e) {

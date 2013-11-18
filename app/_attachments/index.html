@@ -232,6 +232,7 @@ function redraw(){
   node
     .style("fill", function(d) {return colorHash(d.user); })
     .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2})
+    .style('opacity',function(d){return d.reset ? 0.3 : 1})
 
   link = link_group.selectAll(".link")
       .data(graph.links);
@@ -293,6 +294,15 @@ function processDoc(doc){
     redraw();
     // prune after force layout has initialised the links properly
     prune(150); 
+
+  } else if (doc.reset){
+    // we've gone back to the start
+    graph.nodes.forEach(function(node){
+      node.reset = true;
+    })
+
+    node.style('opacity',function(d){return d.reset ? 0.3 : 1})
+
   } else {
     // probably a design doc or something
   }
@@ -301,43 +311,80 @@ function processDoc(doc){
 //1134
 // 1817
 
-var skip = 1817 + 2000
+// var skip = 1817 + 2000
 // d3.json('http://127.0.0.1:5984/tweets/_design/tweets/_view/index?descending=true&limit=100', function(e, data){
 
-d3.json('../../_all_docs?descending=true&include_docs=true&limit=5', function(e, data){
+
+// the buffer to wait before going "realtime"
+var realtimeout = 30 * 1000;
+
+d3.json('../../_all_docs?descending=true&include_docs=true&limit=150', function(e, data){
   //mapping from couchdb
   data = data.rows.map(function(row){return row.doc})
 
-  // console.log(data);
+  // debugging
   d = data;
 
-  data.forEach(function(row, i){
-    // console.log(row)
+  var space = realtimeout / data.length;
 
+  data.forEach(function(row, i){
     setTimeout(function(){
       processDoc(row);
-    },10*i)
-
+    },space*i)
   });
 
 
   // start listening for changes
 
-  console.log(data);
-  console.log('last-event-id='+ data[0]._id);
-// 
+
+  function poll(update_seq){
+
+    setTimeout(function(){
+      var url = "../../_changes?feed=longpoll&since="+update_seq+"&include_docs=true&heartbeat=10000";
+
+      d3.json(url, function(e, data){
+
+        // distribute the tweets across the timeout
+
+        var space = realtimeout / data.results.length;
+
+        data.results.forEach(function(row, i){
+          setTimeout(function(){
+            processDoc(row.doc);
+          }, i*space)
+        })
+        
+
+        poll(data.last_seq);
+
+
+      });
+
+    }, realtimeout);
+
+  }
 
 
 
-
-  if (window.EventSource) {
+  // if (window.EventSource) {
 
     // get the current update_seq
     d3.json('../../', function(e, data){
 
-      console.log("DATA", data)
+      // console.log("DATA", data)
 
       if(data.update_seq){
+        poll(data.update_seq);
+
+        // var url = "../../_changes?feed=longpoll&since="+data.update_seq+"&include_docs=true&heartbeat=10000";
+
+        // d3.json(url, function(e, data){
+        //   console.log("DATAAA", data)
+        // })
+
+        
+
+        /*
         // start long-polling for new tweets
 
         var url = "../../_changes?feed=eventsource&since="+data.update_seq+"&include_docs=true&heartbeat=10000";
@@ -367,7 +414,8 @@ d3.json('../../_all_docs?descending=true&include_docs=true&limit=5', function(e,
 
         // stop listening for events
         // source.removeEventListener('message', sourceListener, false);
-
+        
+        */
 
       }
 
@@ -377,7 +425,7 @@ d3.json('../../_all_docs?descending=true&include_docs=true&limit=5', function(e,
 
 
 
-  }
+  // }
 
 
 })

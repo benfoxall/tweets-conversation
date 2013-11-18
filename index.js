@@ -8,7 +8,7 @@ var tweets = require('tweets'),
 
 var stream = tweets(config.tweets);
 
-var db = nano('http://localhost:5984/tweets');
+var db = nano(config.couch);
 
 var follows, followCount;
 
@@ -24,8 +24,10 @@ reset();
 
 // last id
 var last_id_str;
+var resetting;
 
 stream.on('tweet', function(tweet){
+  if(resetting) return;
 
   // don't count retweets, it makes things mental
   if(tweet.retweeted_status)
@@ -76,8 +78,10 @@ stream.on('tweet', function(tweet){
 
 
 stream.on('reconnect', function(r){
-  console.log('>>reconnect', r)
+  console.log('>>reconnect', r);
 })
+
+
 
 
 
@@ -89,7 +93,7 @@ function connect(){
   }
 
   if(last_id_str){
-    var id = last_id_str += '-f';
+    last_id_str += '-f';
     db.insert(doc, last_id_str); 
   }
 }
@@ -98,11 +102,27 @@ function connect(){
 var priorLength = Object.keys(follows).length;
 
 setInterval(function(){
-  if( Object.keys(follows).length > 300){
+  // 500 beiber fans are very noisy
+  if( Object.keys(follows).length > 500){
+    console.log("---> RESETTING");
+    resetting = true
     reset();
+    if(last_id_str){
+      last_id_str += '-r';
+      db.insert({reset: true}, last_id_str); 
+    }
+    // connect();
+    // wait a while for the tweets to start again
+    // setTimeout(function(){
+    //   resetting = false;
+    // }, 10000)
   } else if(priorLength !== Object.keys(follows).length){
+    resetting = false;
     console.log("---> reconnecting, " +Object.keys(follows).length + ' follows');
+    priorLength = Object.keys(follows).length;
     connect();
+  } else {
+    console.log('---> no change in follows')
   }
 }, 30*1000)
 

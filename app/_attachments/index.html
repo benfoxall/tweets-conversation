@@ -288,11 +288,13 @@ function processDoc(doc){
         .attr('r',function(d){return follows.indexOf(d.user) > -1 ? 5 : 2}) 
     }
 
-  } else {
+  } else if (doc.mentions){
     process(doc);
     redraw();
     // prune after force layout has initialised the links properly
     prune(150); 
+  } else {
+    // probably a design doc or something
   }
 }
 
@@ -330,36 +332,50 @@ d3.json('../../_all_docs?descending=true&include_docs=true&limit=5', function(e,
 
   if (window.EventSource) {
 
-    // var url = "http://127.0.0.1:5984/tweets/_changes?feed=eventsource&last-event-id=" + data[4]._id;
+    // get the current update_seq
+    d3.json('../../', function(e, data){
 
-    
-    var url = "../../_changes?feed=eventsource&since=now&include_docs=true&heartbeat=10000";
+      console.log("DATA", data)
 
-    var source = new EventSource(url);
-    source.onerror = function(e) {
-      alert('EventSource failed.', e);
-    };
+      if(data.update_seq){
+        // start long-polling for new tweets
 
-    // var results = [];
-    // var sourceListener = function(e) {
-    //   var data = JSON.parse(e.data);
-    //   results.push(data);
-    // };
+        var url = "../../_changes?feed=eventsource&since="+data.update_seq+"&include_docs=true&heartbeat=10000";
 
-    // start listening for events
-    source.addEventListener('message', function(m){
-      // console.log("message", m)
-      console.log(m.data)
+        var source = new EventSource(url);
+        source.onerror = function(e) {
+          alert('EventSource failed.', e);
+        };
 
-      var data = JSON.parse(m.data);
-      console.log(data)
+        // var results = [];
+        // var sourceListener = function(e) {
+        //   var data = JSON.parse(e.data);
+        //   results.push(data);
+        // };
 
-      // if(!m.data.doc) return;
-      processDoc(data.doc);
-    }, false);
+        // start listening for events
+        source.addEventListener('message', function(m){
+          // console.log("message", m)
+          console.log(m.data)
 
-    // stop listening for events
-    // source.removeEventListener('message', sourceListener, false);
+          var data = JSON.parse(m.data);
+          console.log(data)
+
+          // if(!m.data.doc) return;
+          processDoc(data.doc);
+        }, false);
+
+        // stop listening for events
+        // source.removeEventListener('message', sourceListener, false);
+
+
+      }
+
+
+
+    })
+
+
 
   }
 
